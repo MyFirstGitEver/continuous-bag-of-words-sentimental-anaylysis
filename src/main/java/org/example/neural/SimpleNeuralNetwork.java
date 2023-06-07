@@ -93,8 +93,6 @@ public class SimpleNeuralNetwork {
 
                 computeGradient(j, j + Math.min(batchSize - 1, xGetter.size() - 1 - j), dW, dB);
 
-                int m = 3;
-
                 for(int i=0;i<layers.length;i++) {
                     firstMomentW[i].scale(beta).add(dW[i].copy().scale(1 - beta));
                     secondMomentW[i].scale(beta2).add(dW[i].square().scale(1 - beta2));

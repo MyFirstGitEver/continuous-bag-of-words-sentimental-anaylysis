@@ -110,9 +110,7 @@ public class Vector {
     }
 
     public Vector copy() {
-        double[] newVec = new double[points.length];
-
-        return new Vector(Arrays.copyOfRange(newVec, 0, newVec.length));
+        return new Vector(Arrays.copyOfRange(points, 0, points.length));
     }
 
     public double sum() {

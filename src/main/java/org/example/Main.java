@@ -16,12 +16,12 @@ public class Main {
     static String prefix = "D:\\Source code\\Outer data\\BOW\\word2vec-nlp-tutorial\\labeledTrainData\\";
 
     public static void main(String[] args) throws Exception {
-        //train(600);
-        //secondLayer(600);
-        test(350);
+        //train(500);
+        secondLayer(500, 30);
+        //test(500, 30);
     }
 
-    private static void test(int featureNum) throws IOException {
+    private static void test(int featureNum, int neurons) throws IOException {
         HashMap<String, Integer> vocab = loadVocab();
 
         SimpleNeuralNetwork model = new SimpleNeuralNetwork(new DenseLayer[]{
@@ -31,8 +31,8 @@ public class Main {
         Vector[] wordEmbeddings = model.w(1);
 
         SimpleNeuralNetwork trainer = new SimpleNeuralNetwork(new DenseLayer[] {
-                new DenseLayer(new ReluActivation(featureNum, 20)),
-                new DenseLayer(new SoftMaxActivation(20, 2))
+                new DenseLayer(new ReluActivation(featureNum, neurons)),
+                new DenseLayer(new SoftMaxActivation(neurons, 2))
         }, new CrossEntropy(), null, null);
 
         trainer.loadParams("sentiment"); // load only
@@ -59,7 +59,7 @@ public class Main {
         System.out.println((hit / (float)frames.length * 100) + " %");
     }
 
-    private static void secondLayer(int featureNum) throws Exception {
+    private static void secondLayer(int featureNum, int neurons) throws Exception {
         HashMap<String, Integer> vocab = loadVocab();
 
         SimpleNeuralNetwork model = new SimpleNeuralNetwork(new DenseLayer[]{
@@ -98,13 +98,13 @@ public class Main {
         };
 
         SimpleNeuralNetwork trainer = new SimpleNeuralNetwork(new DenseLayer[] {
-                new DenseLayer(new ReluActivation(featureNum, 20)),
-                new DenseLayer(new SoftMaxActivation(20, 2))
+                new DenseLayer(new ReluActivation(featureNum, neurons)),
+                new DenseLayer(new SoftMaxActivation(neurons, 2))
         }, new CrossEntropy(), xGetter, yGetter);
 
 
         //trainer.loadParams("sentiment");
-        trainer.train(0.001, 1_000, 100, 10, "sentiment", true);
+        trainer.train(0.01, 1_000, 340, 10, "sentiment", true);
     }
 
     private static Pair<Vector, Integer>[] loadReviews(
@@ -190,7 +190,7 @@ public class Main {
         }, new CrossEntropy(),  xGetter, yGetter);
 
         //network.loadParams("CBOW on 50 reviews");
-        network.train(0.01f,   5, 400, 1,"CBOW on 50 reviews", false);
+        network.train(0.001f,   10, 140, 1,"CBOW on 50 reviews", true);
     }
 
     static HashMap<String, Integer> loadVocab() throws IOException {
