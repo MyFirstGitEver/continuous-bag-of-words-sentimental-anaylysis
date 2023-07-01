@@ -16,9 +16,9 @@ public class Main {
     static String prefix = "D:\\Source code\\Outer data\\BOW\\word2vec-nlp-tutorial\\labeledTrainData\\";
 
     public static void main(String[] args) throws Exception {
-        //train(500);
-        secondLayer(500, 30);
-        //test(500, 30);
+        //train(350);
+        //secondLayer(350, 20);
+        test(350, 20);
     }
 
     private static void test(int featureNum, int neurons) throws IOException {
