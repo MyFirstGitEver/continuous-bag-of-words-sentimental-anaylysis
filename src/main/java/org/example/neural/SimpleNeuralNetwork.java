@@ -1,9 +1,15 @@
 package org.example.neural;
 
+import org.example.DataGetter;
+import org.example.Pair;
+import org.example.Vector;
+
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimpleNeuralNetwork {
-    interface Loss {
+    public interface Loss {
         double loss(Vector v, Vector y) throws Exception;
         Vector derivativeByA(Vector A, Vector Y);
     }
@@ -23,11 +29,12 @@ public class SimpleNeuralNetwork {
         this.yGetter = yGetter;
     }
 
-    public SimpleNeuralNetwork(DenseLayer[] layers, String alias) throws IOException {
+    public SimpleNeuralNetwork(DenseLayer[] layers, String alias) throws IOException, ClassNotFoundException {
         this.layers = layers;
-        loss = null;
-        xGetter = null;
-        yGetter = null;
+        this.loss = null;
+
+        this.xGetter = null;
+        this.yGetter = null;
 
         loadParams(alias);
     }
@@ -73,15 +80,16 @@ public class SimpleNeuralNetwork {
 
         while(iteration < iter) {
             if(iteration % maxToSave == 0) {
-                saveParams(alias);
                 System.out.print(iteration + " iterations have passed.");
                 if(printCost) {
                     System.out.print(" Cost: " + cost());
                 }
 
                 System.out.println();
+                saveParams(alias);
             }
 
+            int subIter = 1;
             for(int j=0;j<xGetter.size();j+= Math.min(batchSize, xGetter.size() - j)) {
                 for (Matrix matrix : dW) {
                     matrix.reset();
@@ -91,9 +99,21 @@ public class SimpleNeuralNetwork {
                     v.reset();
                 }
 
-                computeGradient(j, j + Math.min(batchSize - 1, xGetter.size() - 1 - j), dW, dB);
+                int from = j;
+                int to = j + Math.min(batchSize - 1, xGetter.size() - 1 - j);
+
+                computeGradient(from, to, dW, dB);
+                subIter++;
+
+                if(subIter % 10 == 0) {
+                    saveParams(alias);
+                    System.out.println("Sub-iteration: " + subIter);
+                }
 
                 for(int i=0;i<layers.length;i++) {
+                    dW[i].divideBy(to - from + 1);
+                    dB[i].divideBy(to - from + 1);
+
                     firstMomentW[i].scale(beta).add(dW[i].copy().scale(1 - beta));
                     secondMomentW[i].scale(beta2).add(dW[i].square().scale(1 - beta2));
 
@@ -128,11 +148,20 @@ public class SimpleNeuralNetwork {
         return layers[i].getW();
     }
 
-    private Vector lastError(Pair<Vector, Vector> lastZAndA, Vector y) {
-        Vector z = lastZAndA.first;
-        Vector a = lastZAndA.second;
+    public Vector b(int i) {
+        return layers[i].getB();
+    }
 
-        return loss.derivativeByA(a, y).hadamard(layers[layers.length - 1].derivativeByZ(z, y));
+    private Vector error(Pair<Vector, Vector> zAndA, Vector dLdA, int layerId) {
+        Vector z = zAndA.first;
+
+        Vector result = new Vector(z.size());
+
+        for(int i=0;i<result.size();i++) {
+            result.setX(i, dLdA.hadamard(layers[layerId].derivativeByZ(z, i)).sum());
+        }
+
+        return result;
     }
 
     private void computeGradient(int from, int to, Matrix[] dW, Vector[] dB) throws Exception {
@@ -148,7 +177,10 @@ public class SimpleNeuralNetwork {
                 curr = zAndA[i].second;
             }
 
-            Vector currError = lastError(zAndA[zAndA.length - 1], point.second);
+            Vector currError = error(
+                    zAndA[zAndA.length - 1],
+                    loss.derivativeByA(zAndA[zAndA.length - 1].second, point.second),
+                    layers.length - 1);
 
             for(int i=zAndA.length - 1;i>=0;i--) {
                 Vector a;
@@ -167,8 +199,10 @@ public class SimpleNeuralNetwork {
                 if(i != 0) {
                     // W^T . lastError * g'(z)
                     // only makes sense when we're not finished
-                    nextError = new Vector(layers[i].transposeOfW().mul(matError))
-                            .hadamard(layers[i - 1].derivativeByZ(zAndA[i - 1].first, point.second));
+                    nextError = error(
+                            zAndA[i - 1],
+                            new Vector(layers[i].transposeOfW().mul(matError)),
+                            i - 1);
                 }
 
                 dW[i].add(gradientW);
@@ -180,7 +214,6 @@ public class SimpleNeuralNetwork {
     }
 
     public void saveParams(String alias) throws IOException {
-
         File f = new File("layers" + alias);
         f.mkdir();
 

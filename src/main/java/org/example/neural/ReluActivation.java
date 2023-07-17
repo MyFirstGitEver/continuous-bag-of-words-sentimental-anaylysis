@@ -1,5 +1,7 @@
 package org.example.neural;
 
+import org.example.Vector;
+
 public class ReluActivation extends ActivationFunction {
     public ReluActivation(int featureSize, int neurons) {
         super(featureSize, neurons);
@@ -17,13 +19,11 @@ public class ReluActivation extends ActivationFunction {
     }
 
     @Override
-    public Vector derivativeByZ(Vector z, Vector y) {
-        Vector a = new Vector(z.size());
+    public Vector derivativeByZ(Vector z, int zPos) {
+        Vector dz = new Vector(z.size());
 
-        for(int i=0;i<a.size();i++) {
-            a.setX(i, z.x(i) <= 0 ? 0 : 1);
-        }
+        dz.setX(zPos, z.x(zPos) <= 0 ? 0 : 1);
 
-        return a;
+        return dz;
     }
 }

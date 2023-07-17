@@ -16,27 +16,26 @@ public class Main {
     static String prefix = "D:\\Source code\\Outer data\\BOW\\word2vec-nlp-tutorial\\labeledTrainData\\";
 
     public static void main(String[] args) throws Exception {
-        //train(500);
-        secondLayer(500, 30);
-        //test(500, 30);
+        //train(100);
+        //secondLayer(100, 20, null);
+        test(100, 20);
     }
 
-    private static void test(int featureNum, int neurons) throws IOException {
+    private static void test(int featureNum, int neurons) throws IOException, ClassNotFoundException {
         HashMap<String, Integer> vocab = loadVocab();
 
         SimpleNeuralNetwork model = new SimpleNeuralNetwork(new DenseLayer[]{
                 new DenseLayer(new ReluActivation(vocab.size(), featureNum)),
                 new DenseLayer(new SoftMaxActivation(featureNum, vocab.size()))
-        }, "CBOW on 50 reviews");
+        }, "CBOW on reviews");
         Vector[] wordEmbeddings = model.w(1);
 
         SimpleNeuralNetwork trainer = new SimpleNeuralNetwork(new DenseLayer[] {
                 new DenseLayer(new ReluActivation(featureNum, neurons)),
                 new DenseLayer(new SoftMaxActivation(neurons, 2))
-        }, new CrossEntropy(), null, null);
+        }, "sentiment");
 
-        trainer.loadParams("sentiment"); // load only
-        Pair<Vector, Integer>[] frames = loadReviews(vocab, wordEmbeddings, "5_000 tests.txt", featureNum);
+        Pair<Vector, Integer>[] frames = loadReviews(vocab, wordEmbeddings, "6000 tests.txt", featureNum);
 
         int hit = 0, timer = 0;
         for(Pair<Vector, Integer> frame :frames) {
@@ -59,16 +58,26 @@ public class Main {
         System.out.println((hit / (float)frames.length * 100) + " %");
     }
 
-    private static void secondLayer(int featureNum, int neurons) throws Exception {
+    private static Pair<Vector, Integer>[] secondLayer(int featureNum, int neurons,
+                                                       Pair<Vector, Integer>[] lastDataset) throws Exception {
         HashMap<String, Integer> vocab = loadVocab();
 
         SimpleNeuralNetwork model = new SimpleNeuralNetwork(new DenseLayer[]{
                 new DenseLayer(new ReluActivation(vocab.size(), featureNum)),
                 new DenseLayer(new SoftMaxActivation(featureNum, vocab.size()))
-        }, "CBOW on 50 reviews");
+        }, "CBOW on reviews");
         Vector[] wordEmbeddings = model.w(1);
 
-        Pair<Vector, Integer>[] frames = loadReviews(vocab, wordEmbeddings, " 10_000 reviews.txt", featureNum);
+        Pair<Vector, Integer>[] frames = loadReviews(vocab, wordEmbeddings, "10_000 reviews.txt", featureNum);
+
+        if(lastDataset != null) {
+            System.out.println(frames.length == lastDataset.length);
+
+            for(int i=0;i<frames.length;i++) {
+                System.out.println(frames[i].first.identical(lastDataset[i].first, 10e-8));
+                System.out.println(frames[i].second.equals(lastDataset[i].second));
+            }
+        }
 
         DataGetter<Vector> xGetter = new DataGetter<>() {
             @Override
@@ -102,9 +111,10 @@ public class Main {
                 new DenseLayer(new SoftMaxActivation(neurons, 2))
         }, new CrossEntropy(), xGetter, yGetter);
 
+        trainer.loadParams("sentiment");
+        trainer.train(0.001, 5000, 200, 10, "sentiment", true);
 
-        //trainer.loadParams("sentiment");
-        trainer.train(0.01, 1_000, 340, 10, "sentiment", true);
+        return frames;
     }
 
     private static Pair<Vector, Integer>[] loadReviews(
@@ -137,7 +147,7 @@ public class Main {
             HashMap<String, Integer> vocab,
             Vector[] embeddings, int featureNum) throws IOException {
         List<String> tokens = TextProcessing.lemmas(review);
-        TextProcessing.removeStopWordsAndWeirdStrings(tokens, false, true, false);
+        TextProcessing.removeStopWordsAndWeirdStrings(tokens, true, true, false);
 
         Vector v = new Vector(featureNum);
         for(String token : tokens) {
@@ -150,7 +160,7 @@ public class Main {
     }
 
     static void train(int featureNum) throws Exception {
-        List<Vector> contextVecs = loadVecs("vecs-50.txt");
+        List<Vector> contextVecs = loadVecs("vecs.txt");
         List<String> centerWords = loadCenterWords();
         HashMap<String, Integer> vocab = loadVocab();
 
@@ -183,18 +193,17 @@ public class Main {
             }
         };
 
-
         SimpleNeuralNetwork network = new SimpleNeuralNetwork(new DenseLayer[]{
-                new DenseLayer(new ReluActivation(vocab.size(), featureNum)),
+                new DenseLayer(new LinearActivation(vocab.size(), featureNum)),
                 new DenseLayer(new SoftMaxActivation(featureNum, vocab.size()))
         }, new CrossEntropy(),  xGetter, yGetter);
 
-        //network.loadParams("CBOW on 50 reviews");
-        network.train(0.001f,   10, 140, 1,"CBOW on 50 reviews", true);
+        network.loadParams("CBOW on reviews");
+        network.train(0.006, 2, 200, 1,"CBOW on reviews", true);
     }
 
     static HashMap<String, Integer> loadVocab() throws IOException {
-        BufferedReader reader = Files.newBufferedReader(Paths.get(prefix + "vocab-50.txt"));
+        BufferedReader reader = Files.newBufferedReader(Paths.get(prefix + "vocab.txt"));
 
         String line;
         HashMap<String, Integer> hm = new HashMap<>();
@@ -211,7 +220,7 @@ public class Main {
     }
 
     static List<String> loadCenterWords() throws IOException {
-        BufferedReader reader = Files.newBufferedReader(Paths.get(prefix + "centers-50.txt"), Charset.forName("Cp1252"));
+        BufferedReader reader = Files.newBufferedReader(Paths.get(prefix + "centers.txt"), Charset.forName("Cp1252"));
 
         String line;
         List<String> centerWords = new ArrayList<>();

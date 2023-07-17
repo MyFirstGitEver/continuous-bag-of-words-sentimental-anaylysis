@@ -1,5 +1,7 @@
 package org.example.neural;
 
+import org.example.Vector;
+
 public class MSE implements SimpleNeuralNetwork.Loss {
     @Override
     public double loss(Vector v, Vector y) {

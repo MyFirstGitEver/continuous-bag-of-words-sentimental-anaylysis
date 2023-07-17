@@ -1,49 +1,12 @@
 package org.example.neural;
 
-abstract class ActivationFunction {
-    protected final int featureSize;
-    protected final int neurons;
-
-    ActivationFunction(int featureSize, int neurons) {
-        this.featureSize = featureSize;
-        this.neurons = neurons;
-    }
-
-    abstract Vector out(Vector z);
-    abstract Vector derivativeByZ(Vector z, Vector y);
-
-    Vector[] getW() {
-        Vector[] W = new Vector[neurons];
-
-        for(int i=0;i<W.length;i++) {
-            W[i] = new Vector(featureSize);
-            W[i].randomise();
-        }
-
-        return W;
-    }
-
-    Vector getB() {
-        Vector b = new Vector(neurons);
-        b.randomise();
-
-        return b;
-    }
-    Vector z(Vector[] W, Vector B, Vector v) {
-        double[] points = new double[neurons];
-
-        for(int i=0;i<neurons;i++) {
-            points[i] = W[i].dot(v) + B.x(i);
-        }
-
-        return new Vector(points);
-    }
-}
+import org.example.Pair;
+import org.example.Vector;
 
 public class DenseLayer {
     private final ActivationFunction function;
 
-    private final Vector[] W;
+    private Vector[] W;
     private Vector B;
 
     public DenseLayer(ActivationFunction function) {
@@ -76,6 +39,10 @@ public class DenseLayer {
         this.B = B;
     }
 
+    public void setW(Vector[] W) {
+        this.W = W;
+    }
+
     public void update(
             Vector[] firstMomentW,
             Vector[] secondMomentW,
@@ -85,16 +52,14 @@ public class DenseLayer {
             throws Exception {
 
         for(int i=0;i<firstMomentW.length;i++) {
-            W[i].subtract(firstMomentW[i].divide(secondMomentW[i].sqrt(), 10e-8f).scaleBy(learningRate));
+            W[i].subtract(firstMomentW[i].divideCopy(secondMomentW[i].sqrtCopy(), 10e-8f).scaleBy(learningRate));
         }
 
-        for(int i=0;i<firstMomentB.size();i++) {
-            B.subtract(firstMomentB.divide(secondMomentB.sqrt(), 10e-8f).scaleBy(learningRate));
-        }
+        B.subtract(firstMomentB.divideCopy(secondMomentB.sqrtCopy(), 10e-8f).scaleBy(learningRate));
     }
 
-    public Vector derivativeByZ(Vector Z, Vector y) {
-        return function.derivativeByZ(Z, y);
+    public Vector derivativeByZ(Vector Z, int zIndex) {
+        return function.derivativeByZ(Z, zIndex);
     }
 
     public Matrix transposeOfW() {
